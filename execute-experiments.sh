@@ -22,7 +22,7 @@ ssh user@qemu-kvm-vm 'bash -s' < ./benchmark.sh >> n1-kvm-results.csv
 ssh user@qemu-vm 'bash -s' < ./benchmark.sh >> n1-qemu-results.csv
 
 crontab -e
-*/30 * * * * /path/to/execute-experiments.sh
+
 chmod +x execute-experiments.sh
 
 python3 plot.py
