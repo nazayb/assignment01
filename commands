@@ -1,0 +1,32 @@
+# makineleri listeler
+compute instances list
+
+# to get in the vm
+gcloud compute ssh c3-standard-4 --zone europe-west1-c
+
+# repo clone lamak icin public olmasi gerek
+
+
+#vm icinde ssh key generateledik bunu githuba ekledik
+  ssh-keygen -t rsa -b 4096 -C nazaybarboros@gmail.com
+  cikan key: SHA256:0Ciyd1heXTxtSjCOxbHuPeo1O4oi0jgJxtVOOyxZtig
+
+  isim verdik "nazayssh" --> nazayssh.pub
+
+  cat nazayssh.pub
+
+  public olan repo bu sekilde clone ladi:
+git clone https://github.com/nazayb/assignment01.git (https linkini aldik)
+
+# git fetch --all (yeni file ekleyince fetchle)
+# git pull origin main (daha sonra pull)
+
+# vm icine sysbench indirdik:
+sudo apt install sysbench -y
+
+  # vm den cikmak icin sadece "exit"
+  
+
+
+
+  
