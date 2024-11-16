@@ -35,7 +35,7 @@ gcloud compute firewall-rules create incoming \
   --target-tags=cc
 
 # loop thhrought INSTANCES_NAMES List and intanciate the instances
-INSTANCES_NAMES=(c3-standard-4 c4-standard-4 n4-standard-4 e2-standard-4)
+INSTANCES_NAMES=(c3-standard-4 c4-standard-4 n4-standard-4)
 for VM_NAME in ${INSTANCES_NAMES[*]}
 do
   gcloud compute instances create $VM_NAME \
