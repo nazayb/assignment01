@@ -1,32 +1,48 @@
-#Create four CSV files, each with a header:
-#time,cpu,mem,diskRand,diskSeq
+#!/bin/bash
 
-echo "time,cpu,mem,diskRand,diskSeq" > n1-native-results.csv
-echo "time,cpu,mem,diskRand,diskSeq" > n1-docker-results.csv
-# Repeat for other platforms and instances.
+# Define CSV file names
+NATIVE_RESULTS="n1-native-results.csv"
+DOCKER_RESULTS="n1-docker-results.csv"
+KVM_RESULTS="n1-kvm-results.csv"
+QEMU_RESULTS="n1-qemu-results.csv"
 
-#1- Run the benchmark script natively on the GCP VM:
-#Run the benchmark script natively on the GCP VM
-./benchmark.sh >> n1-native-results.csv
+# Write CSV headers for all result files
+echo "time,cpu,mem,diskRand,diskSeq" > $NATIVE_RESULTS
+echo "time,cpu,mem,diskRand,diskSeq" > $DOCKER_RESULTS
+echo "time,cpu,mem,diskRand,diskSeq" > $KVM_RESULTS
+echo "time,cpu,mem,diskRand,diskSeq" > $QEMU_RESULTS
 
-#2-Run the benchmark in a Docker container:
-#Start the Docker container with the benchmark script:
-docker run --rm your-docker-image >> n1-docker-results.csv
+# Function to execute benchmark and collect results
+run_benchmark() {
+    platform=$1
+    output_file=$2
 
-#3-Run the benchmark on Qemu + KVM:
-#SSH into the Qemu + KVM VM and execute the benchmark script:
-ssh user@qemu-kvm-vm 'bash -s' < ./benchmark.sh >> n1-kvm-results.csv
+    echo "Running benchmark for $platform..."
+    case $platform in
+        native)
+            ./benchmark.sh >> $output_file 2>/dev/null
+            ;;
+        docker)
+            docker run --rm benchmark-image >> $output_file 2>/dev/null
+            ;;
+        kvm)
+            ssh -o StrictHostKeyChecking=no user@kvm-vm './benchmark.sh' >> $output_file 2>/dev/null
+            ;;
+        qemu)
+            ssh -o StrictHostKeyChecking=no user@qemu-vm './benchmark.sh' >> $output_file 2>/dev/null
+            ;;
+    esac
+    echo "Benchmark for $platform completed."
+}
 
-#4-Run the benchmark on Qemu with dynamic binary translation:
-#ssh user@qemu-vm 'bash -s' < ./benchmark.sh >> n1-qemu-results.csv
-ssh user@qemu-vm 'bash -s' < ./benchmark.sh >> n1-qemu-results.csv
+# Run benchmarks for all platforms
+run_benchmark native $NATIVE_RESULTS
+run_benchmark docker $DOCKER_RESULTS
+run_benchmark kvm $KVM_RESULTS
+run_benchmark qemu $QEMU_RESULTS
 
-crontab -e
+# Add a cron job to automate the execution every 30 minutes
+echo "Adding cron job for automation..."
+(crontab -l 2>/dev/null; echo "*/30 * * * * $(pwd)/execute-experiments.sh") | crontab -
 
-chmod +x execute-experiments.sh
-
-python3 plot.py
-
-
-
-
+echo "Script executed. Benchmarks will now run every 30 minutes for the next 24 hours."
