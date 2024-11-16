@@ -13,26 +13,27 @@ run_benchmark() {
     # Run benchmark and append results
     case $platform in
         native)
-            ./benchmark.sh >> "$output_file" 2>/dev/null
+            ./benchmark.sh >> "$output_file"
             ;;
         docker)
-            docker run --rm benchmark >> "$output_file" 2>/dev/null
+            docker run --rm benchmark >> "$output_file"
             ;;
         kvm)
-            ssh kvm-vm './benchmark.sh' >> "$output_file" 2>/dev/null
+            ssh -o StrictHostKeyChecking=no kvm-vm './benchmark.sh' >> "$output_file"
             ;;
         qemu)
-            ssh qemu-vm './benchmark.sh' >> "$output_file" 2>/dev/null
+            ssh -o StrictHostKeyChecking=no qemu-vm './benchmark.sh' >> "$output_file"
             ;;
     esac
 }
 
 # Run benchmarks for all platforms
 run_all_benchmarks() {
-    run_benchmark "native"
-    run_benchmark "docker"
-    run_benchmark "kvm"
-    run_benchmark "qemu"
+    local vm_type=$1
+    run_benchmark "${vm_type}-native"
+    run_benchmark "${vm_type}-docker"
+    run_benchmark "${vm_type}-kvm"
+    run_benchmark "${vm_type}-qemu"
 }
 
 # Set up cron job
@@ -43,7 +44,15 @@ setup_cron() {
 # Main execution
 case $1 in
     run)
-        run_all_benchmarks
+        # Determine VM type based on hostname or instance metadata
+        vm_type=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/machine-type" -H "Metadata-Flavor: Google" | awk -F/ '{print $NF}')
+        case $vm_type in
+            c3-standard-4) vm_prefix="c3" ;;
+            c4-standard-4) vm_prefix="c4" ;;
+            n4-standard-4) vm_prefix="n4" ;;
+            *) echo "Unknown VM type"; exit 1 ;;
+        esac
+        run_all_benchmarks $vm_prefix
         ;;
     setup)
         setup_cron
