@@ -1,48 +1,55 @@
 #!/bin/bash
 
-# Define CSV file names
-NATIVE_RESULTS="n1-native-results.csv"
-DOCKER_RESULTS="n1-docker-results.csv"
-KVM_RESULTS="n1-kvm-results.csv"
-QEMU_RESULTS="n1-qemu-results.csv"
-
-# Write CSV headers for all result files
-echo "time,cpu,mem,diskRand,diskSeq" > $NATIVE_RESULTS
-echo "time,cpu,mem,diskRand,diskSeq" > $DOCKER_RESULTS
-echo "time,cpu,mem,diskRand,diskSeq" > $KVM_RESULTS
-echo "time,cpu,mem,diskRand,diskSeq" > $QEMU_RESULTS
-
-# Function to execute benchmark and collect results
+# Function to run benchmark and append results to CSV
 run_benchmark() {
-    platform=$1
-    output_file=$2
-
-    echo "Running benchmark for $platform..."
+    local platform=$1
+    local output_file="${platform}-results.csv"
+    
+    # Create CSV header if file doesn't exist
+    if [ ! -f "$output_file" ]; then
+        echo "time,cpu,mem,diskRand,diskSeq" > "$output_file"
+    fi
+    
+    # Run benchmark and append results
     case $platform in
         native)
-            ./benchmark.sh >> $output_file 2>/dev/null
+            ./benchmark.sh >> "$output_file" 2>/dev/null
             ;;
         docker)
-            docker run --rm benchmark-image >> $output_file 2>/dev/null
+            docker run --rm benchmark >> "$output_file" 2>/dev/null
             ;;
         kvm)
-            ssh -o StrictHostKeyChecking=no user@kvm-vm './benchmark.sh' >> $output_file 2>/dev/null
+            ssh kvm-vm './benchmark.sh' >> "$output_file" 2>/dev/null
             ;;
         qemu)
-            ssh -o StrictHostKeyChecking=no user@qemu-vm './benchmark.sh' >> $output_file 2>/dev/null
+            ssh qemu-vm './benchmark.sh' >> "$output_file" 2>/dev/null
             ;;
     esac
-    echo "Benchmark for $platform completed."
 }
 
 # Run benchmarks for all platforms
-run_benchmark native $NATIVE_RESULTS
-run_benchmark docker $DOCKER_RESULTS
-run_benchmark kvm $KVM_RESULTS
-run_benchmark qemu $QEMU_RESULTS
+run_all_benchmarks() {
+    run_benchmark "native"
+    run_benchmark "docker"
+    run_benchmark "kvm"
+    run_benchmark "qemu"
+}
 
-# Add a cron job to automate the execution every 30 minutes
-echo "Adding cron job for automation..."
-(crontab -l 2>/dev/null; echo "*/30 * * * * $(pwd)/execute-experiments.sh") | crontab -
+# Set up cron job
+setup_cron() {
+    (crontab -l 2>/dev/null; echo "*/30 * * * * $(pwd)/execute-experiments.sh run") | crontab -
+}
 
-echo "Script executed. Benchmarks will now run every 30 minutes for the next 24 hours."
+# Main execution
+case $1 in
+    run)
+        run_all_benchmarks
+        ;;
+    setup)
+        setup_cron
+        ;;
+    *)
+        echo "Usage: $0 {run|setup}"
+        exit 1
+        ;;
+esac
