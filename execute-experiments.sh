@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Add this at the beginning of the run_all_benchmarks function
+echo "$(date): Starting benchmarks for $1" >> /tmp/benchmark_log.txt
+
 # Function to run benchmark and append results to CSV
 run_benchmark() {
     local platform=$1
