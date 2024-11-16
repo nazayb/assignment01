@@ -1,5 +1,5 @@
 # makineleri listeler
-compute instances list
+gcloud compute instances list
 
 # to get in the vm
 gcloud compute ssh c3-standard-4 --zone europe-west1-c
