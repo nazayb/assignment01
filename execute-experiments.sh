@@ -1,64 +1,53 @@
 #!/bin/bash
 
-# Function to run benchmark and append results to CSV
+# File paths for results
+NATIVE_RESULTS="n1-native-results.csv"
+DOCKER_RESULTS="n1-docker-results.csv"
+KVM_RESULTS="n1-kvm-results.csv"
+QEMU_RESULTS="n1-qemu-results.csv"
+
+# Ensure CSV files exist and have a header
+for file in $NATIVE_RESULTS $DOCKER_RESULTS $KVM_RESULTS $QEMU_RESULTS; do
+    if [ ! -f "$file" ]; then
+        echo "time,cpu,mem,diskRand,diskSeq" > "$file"
+    fi
+done
+
+# Function to execute benchmarks
 run_benchmark() {
     local platform=$1
-    local output_file="${platform}-results.csv"
-    
-    # Create CSV header if file doesn't exist
-    if [ ! -f "$output_file" ]; then
-        echo "time,cpu,mem,diskRand,diskSeq" > "$output_file"
-    fi
-    
-    # Run benchmark and append results
+    local output_file=$2
+
+    echo "Running benchmark for $platform..."
+
     case $platform in
         native)
-            ./benchmark.sh >> "$output_file"
+            ./benchmark.sh >> "$output_file" 2>/dev/null
             ;;
         docker)
-            docker run --rm benchmark >> "$output_file"
+            docker run --rm benchmark-image >> "$output_file" 2>/dev/null
             ;;
         kvm)
-            ssh -o StrictHostKeyChecking=no kvm-vm './benchmark.sh' >> "$output_file"
+            ssh -o StrictHostKeyChecking=no user@kvm-vm './benchmark.sh' >> "$output_file" 2>/dev/null
             ;;
         qemu)
-            ssh -o StrictHostKeyChecking=no qemu-vm './benchmark.sh' >> "$output_file"
+            ssh -o StrictHostKeyChecking=no user@qemu-vm './benchmark.sh' >> "$output_file" 2>/dev/null
             ;;
     esac
+
+    echo "Benchmark for $platform completed."
 }
 
-# Run benchmarks for all platforms
-run_all_benchmarks() {
-    local vm_type=$1
-    run_benchmark "${vm_type}-native"
-    run_benchmark "${vm_type}-docker"
-    run_benchmark "${vm_type}-kvm"
-    run_benchmark "${vm_type}-qemu"
-}
+# Execute benchmarks for all platforms
+run_benchmark native $NATIVE_RESULTS
+run_benchmark docker $DOCKER_RESULTS
+run_benchmark kvm $KVM_RESULTS
+run_benchmark qemu $QEMU_RESULTS
 
-# Set up cron job
-setup_cron() {
-    (crontab -l 2>/dev/null; echo "*/30 * * * * $(pwd)/execute-experiments.sh run") | crontab -
-}
+# Add the script to cron for periodic execution
+if ! crontab -l | grep -q "$(pwd)/execute-experiments.sh"; then
+    echo "Adding cron job for periodic execution..."
+    (crontab -l 2>/dev/null; echo "*/30 * * * * $(pwd)/execute-experiments.sh") | crontab -
+fi
 
-# Main execution
-case $1 in
-    run)
-        # Determine VM type based on hostname or instance metadata
-        vm_type=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/machine-type" -H "Metadata-Flavor: Google" | awk -F/ '{print $NF}')
-        case $vm_type in
-            c3-standard-4) vm_prefix="c3" ;;
-            c4-standard-4) vm_prefix="c4" ;;
-            n4-standard-4) vm_prefix="n4" ;;
-            *) echo "Unknown VM type"; exit 1 ;;
-        esac
-        run_all_benchmarks $vm_prefix
-        ;;
-    setup)
-        setup_cron
-        ;;
-    *)
-        echo "Usage: $0 {run|setup}"
-        exit 1
-        ;;
-esac
+echo "Benchmarks are running. Results will be saved in CSV files."
