@@ -1,53 +1,50 @@
 #!/bin/bash
 
-# File paths for results
-NATIVE_RESULTS="n1-native-results.csv"
-DOCKER_RESULTS="n1-docker-results.csv"
-KVM_RESULTS="n1-kvm-results.csv"
-QEMU_RESULTS="n1-qemu-results.csv"
+# Function to check if a command was successful
+check_command() {
+    if [ $? -ne 0 ]; then
+        echo "Error: $1 failed"
+        exit 1
+    fi
+}
 
-# Ensure CSV files exist and have a header
-for file in $NATIVE_RESULTS $DOCKER_RESULTS $KVM_RESULTS $QEMU_RESULTS; do
-    if [ ! -f "$file" ]; then
-        echo "time,cpu,mem,diskRand,diskSeq" > "$file"
+# Prepare result files with CSV headers
+for platform in native docker kvm qemu; do
+    echo "time,cpu,mem,diskRand,diskSeq" > "$(hostname)-${platform}-results.csv"
+done
+
+# Function to run benchmark and append results
+run_benchmark() {
+    local platform=$1
+    local command=$2
+    
+    echo "Running benchmark on $platform"
+    result=$(eval $command)
+    check_command "Benchmark on $platform"
+    
+    echo "$result" >> "$(hostname)-${platform}-results.csv"
+}
+
+# Run benchmarks
+for i in {1..48}; do
+    timestamp=$(date +%s)
+    
+    # Native benchmark
+    run_benchmark "native" "./benchmark.sh"
+    
+    # Docker benchmark
+    run_benchmark "docker" "sudo docker run --rm benchmark"
+    
+    # KVM benchmark
+    run_benchmark "kvm" "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@kvm-instance './benchmark.sh'"
+    
+    # QEMU benchmark
+    run_benchmark "qemu" "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p 2222 ubuntu@localhost './benchmark.sh'"
+    
+    # Wait for 30 minutes before next iteration
+    if [ $i -lt 48 ]; then
+        sleep 1800
     fi
 done
 
-# Function to execute benchmarks
-run_benchmark() {
-    local platform=$1
-    local output_file=$2
-
-    echo "Running benchmark for $platform..."
-
-    case $platform in
-        native)
-            ./benchmark.sh >> "$output_file" 2>/dev/null
-            ;;
-        docker)
-            docker run --rm benchmark-image >> "$output_file" 2>/dev/null
-            ;;
-        kvm)
-            ssh -o StrictHostKeyChecking=no user@kvm-vm './benchmark.sh' >> "$output_file" 2>/dev/null
-            ;;
-        qemu)
-            ssh -o StrictHostKeyChecking=no user@qemu-vm './benchmark.sh' >> "$output_file" 2>/dev/null
-            ;;
-    esac
-
-    echo "Benchmark for $platform completed."
-}
-
-# Execute benchmarks for all platforms
-run_benchmark native $NATIVE_RESULTS
-run_benchmark docker $DOCKER_RESULTS
-run_benchmark kvm $KVM_RESULTS
-run_benchmark qemu $QEMU_RESULTS
-
-# Add the script to cron for periodic execution
-if ! crontab -l | grep -q "$(pwd)/execute-experiments.sh"; then
-    echo "Adding cron job for periodic execution..."
-    (crontab -l 2>/dev/null; echo "*/30 * * * * $(pwd)/execute-experiments.sh") | crontab -
-fi
-
-echo "Benchmarks are running. Results will be saved in CSV files."
+echo "All benchmarks completed."
