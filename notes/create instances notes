@@ -1,0 +1,46 @@
+# VM_NAME=c3-standard-4 \
+# gcloud compute instances create $VM_NAME \
+#  --machine-type=$VM_NAME \
+#   --image=ubuntu-2004-focal-v20241016  \
+#   --image-project=ubuntu-os-cloud \
+#   --zone=europe-west1-c	 \
+#   --tags=cc \
+#   --enable-nested-virtualization \
+#   --boot-disk-size=100GB
+
+
+# gcloud compute instances create letsgo \
+# --image=ubuntu-2004-focal-v20241016  \
+# --image-project=ubuntu-os-cloud \
+# --zone=europe-west1-c	 \
+# --tags=cc \
+# --enable-nested-virtualization \
+# --boot-disk-size=100GB
+
+
+# TODO set the project in the config 
+# ret=$(echo Y | gcloud compute os-login ssh-keys add \
+#    --key-file=./$KEY_FILENAME.pub \
+#    --project=$PROJECT_NAME \
+#    --format="json"
+#  )
+#
+#
+# echo
+# echo $ret | grep $PROJECT_NAME
+   
+# deletes the project
+# echo y | gcloud projects delete $PROJECT_NAME
+
+
+# pr=$(echo 'shiiiit')
+# echo "fuck"
+# echo $pr
+
+# if [[ $pr =~ "already in use" ]]; 
+# then
+#   echo 'Already there'
+# else
+#   echo 'Created new project'
+#   echo $pr
+# fi
